@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document </title>
+    <style>
+        .edit-btn {
+            background-color: green;
+            color: white;
+            margin: 2px;
+            padding: 2px;
+            width: 50px;
+            border-radius: 10px;
+
+        }
+
+        .edit-btn:hover {
+            background-color: rgb(45, 145, 45);
+            color: white;
+            margin: 2px;
+            padding: 2px;
+            width: 50px;
+            border-radius: 20px;
+            font-size: 10px;
+        }
+
+        .delete-btn {
+            background-color: red;
+            color: white;
+            margin: 2px;
+            padding: 2px;
+            border-radius: 10px;
+            width: 50px;
+        }
+
+        .delete-btn:hover {
+            background-color: rgb(156, 43, 43);
+            color: white;
+            margin: 2px;
+            padding: 2px;
+            width: 50px;
+            border-radius: 20px;
+            font-size: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <table border="2px solid" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Firstname</th>
+                <th>Lastname</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="load-data">
+
+        </tbody>
+
+    </table>
+    <br>
+    <fieldset>
+        <legend id="legend">insert data form</legend>
+        <form action="" id="myform">
+            <input type="hidden" name="id" id="sid">
+            firstname : <br> <input type="text" name="fname" id="fname"> <br>
+            lastname : <br> <input type="text" name="lname" id="lname"> <br><br>
+            <input type="button" name="submit" id="submit" value="submit" class="edit-btn">
+
+        </form>
+    </fieldset>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script>
+        $(document).ready(function () {
+            function loadtable() {
+                $("#load-data").html("");
+                $.ajax({
+                    url: 'http://localhost/rest_api/rest_api_fetch_all.php',
+                    type: 'GET',
+                    success: function (data) {
+                        if (data.status == false) {
+                            $("#load-data").html("<tr><td colspan = '3'>" + data.msg + "</td></tr>")
+
+                        }
+                        else {
+                            var record = JSON.parse(data);
+                              id = 1 ;
+                            $.each(record, function (key, value) {
+                                $("#load-data").append("<tr> <td>" +id +
+                                    "</td><td>" + value.firstname +
+                                    "</td><td>" + value.lastname +
+                                    "</td><td><button class='edit-btn' data-eid='" + value.id + "'>edit</button><button class='delete-btn' data-uid='" + value.id + "'>delete</button></td></tr>")
+                               id++;
+                            });
+                           
+                        }
+                    }
+                });
+
+            }
+            loadtable();
+
+
+            $(document).on("click", ".edit-btn", function () {
+                var eid = $(this).data('eid');
+                var obj = { sid: eid };
+                var myJson = JSON.stringify(obj);
+
+                $.ajax({
+                    url: 'http://localhost/rest_api/rest_api_fetch_single.php',
+                    type: 'POST',
+                    data: myJson,
+                    success: function (data) {
+
+                        $.each(data, function (key, value) {
+                            var id = value.id;
+                            var fname = value.firstname;
+                            var lname = value.lastname;
+
+                            $("#legend").text('Update Form');
+                            $('#sid').val(id);
+                            $('#fname').val(fname);
+                            $('#lname').val(lname);
+                        });
+
+                    }
+                });
+            })
+
+            $('#submit').click(function () {
+                var id = $('#sid').val();
+                var firstname = $('#fname').val();
+                var lastname = $('#lname').val();
+
+                if (firstname != "" && lastname != "") {
+                    //    update record 
+                    if (id != "") {
+
+                        var output = { sid: id, fname: firstname, lname: lastname };
+                        var myJson = JSON.stringify(output);
+
+                        $.ajax({
+                            url: 'http://localhost/rest_api/rest_api_update.php',
+                            type: 'PUT',
+                            data: myJson,
+                            success: function (data) {
+
+                                var record = JSON.parse(data);
+
+                                if (record.status == true) {
+                                    loadtable();
+                                    $("#myform").trigger("reset");
+                                    $("#legend").text('insert data form');
+                                    alert(record.message);
+                                } else {
+                                    alert(record.message);
+                                    $("#myform").trigger("reset");
+
+                                }
+                            }
+                        });
+                    }
+                    // insert record 
+                    else {
+
+                        var output = { fname: firstname, lname: lastname };
+                        var myJson = JSON.stringify(output);
+
+                        $.ajax({
+                            url: 'http://localhost/rest_api/rest_api_insert.php',
+                            type: 'POST',
+                            data: myJson,
+                            success: function (data) {
+
+                                var record = JSON.parse(data);
+
+                                if (record.status == true) {
+                                    loadtable();
+                                    $("#myform").trigger("reset");
+                                    alert(record.message);
+                                } else {
+                                    alert(record.message);
+                                    $("#myform").trigger("reset");
+
+                                }
+                            }
+
+                        });
+                    }
+
+                } else {
+                    alert('all fields are required');
+                }
+            });
+
+            // delete record 
+
+            $(document).on("click", ".delete-btn", function () {
+
+                if (confirm("are you really want to delete this record")) {
+                    var eid = $(this).data('uid');
+                    var obj = { sid: eid };
+                    var myJson = JSON.stringify(obj);
+                    var row = this;
+
+                    $.ajax({
+                        url: 'http://localhost/rest_api/rest_api_delete.php',
+                        type: 'POST',
+                        data: myJson,
+                        success: function (data) {
+                            var record = JSON.parse(data);
+                            if (record.status == false) {
+                                alert(record.message);
+                            } else {
+                                loadtable();
+                                alert(record.message);
+                                $(row).closest("tr").fadeOut();
+                            }
+
+                        }
+                    });
+                }
+            })
+        });
+
+
+    </script>
+</body>
+
+</html>
